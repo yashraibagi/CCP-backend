@@ -1,16 +1,24 @@
 # app.py - COMPLETE Flask Backend
 from flask import Flask, request, jsonify
-import pandas as pd
-import pickle
 from flask_cors import CORS
-import numpy as np
+import sys
+import os
+
+# Add current directory to Python path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from utils import load_model, validate_and_prepare_input
 
 app = Flask(__name__)
-CORS(app)                    # Allow frontend (React/Vue/etc.) to call this API
+CORS(app)
 
 # Load model ONCE when server starts (fast!)
-model = load_model()
+# Wrap in try-except in case model file doesn't exist
+try:
+    model = load_model()
+except Exception as e:
+    print(f"⚠️ Warning: Model could not be loaded at startup: {e}")
+    model = None
 
 @app.route('/', methods=['GET'])
 def home():
@@ -26,40 +34,16 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
+        if model is None:
+            return jsonify({"error": "Model not loaded. Server not ready."}), 503
+            
         data = request.get_json()
 
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
 
-        # ✅ NEW INPUT (ONLY 3 FEATURES)
-        input_data = pd.DataFrame([{
-            "tenure": data.get("tenure"),
-            "MonthlyCharges": data.get("monthly_charges"),
-            "TotalCharges": data.get("total_charges")
-        }])
-
-        # prediction
-        churn = model.predict(input_data)[0]
-        probability = model.predict_proba(input_data)[0][1]
-
-        return jsonify({
-            "churn": int(churn),
-            "probability": round(float(probability), 4)
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
         # === Validation & Preparation ===
         X = validate_and_prepare_input(data)
-
-        # ====================== PREPROCESSING BLOCK (IF YOU NEED IT) ======================
-        # Uncomment the lines below if you saved a scaler
-        #
-        # from utils import load_scaler
-        # scaler = load_scaler()               # load once globally is better
-        # X = scaler.transform(X)
-        # ================================================================================
 
         # Make prediction
         churn = model.predict(X)[0]                    # 0 or 1
@@ -77,7 +61,6 @@ def predict():
             "error": "Server error during prediction",
             "details": str(e)
         }), 500
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
