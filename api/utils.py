@@ -1,22 +1,33 @@
-# utils.py - Keep all helper functions here
+import os
 import joblib
 import numpy as np
 
 def load_model():
     """Load the saved model once when app starts"""
-    return joblib.load('model/churn_model.pkl')
+    # Use path relative to this file's location for Vercel compatibility
+    model_path = os.path.join(
+        os.path.dirname(__file__),
+        'model',
+        'churn_model.pkl'
+    )
+    return joblib.load(model_path)
 
-# ====================== PREPROCESSING (IF NEEDED) ======================
+# ====================== PREPROCESSING (IF NEEDED) ====================== 
 # Uncomment and use ONLY if you used scaling/encoding during training
 
 # def load_scaler():
 #     """Load scaler if you saved it separately"""
-#     return joblib.load('model/scaler.pkl')   # ← save this file during training
+#     scaler_path = os.path.join(
+#         os.path.dirname(__file__),
+#         'model',
+#         'scaler.pkl'
+#     )
+#     return joblib.load(scaler_path)
 
 # def load_encoder():
 #     """If you have any categorical features (none in your case)"""
 #     pass
-# =======================================================================
+# ====================================================================== 
 
 def validate_and_prepare_input(data: dict):
     """Validate input + return numpy array in EXACT feature order"""
